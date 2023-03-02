@@ -1,0 +1,52 @@
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+.marker {
+    background-image: url('/static/bike-icon-14.png');
+    background-size: cover;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+}
+/* .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 300px;
+    padding: 20px;
+    background-color: rgb(255, 255, 255);
+} */
+.input-box {
+    display: block;
+    margin-bottom: 10px;
+    width: 100%;
+    font-size: 16px;
+    padding: 5px;
+}
+.nav-button {
+    display: block;
+    margin-top: 20px;
+    width: 100%;
+    font-size: 16px;
+    padding: 10px;
+    background-color: #0088cc;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.mapboxgl-popup {
+    max-width: 100px;
+  }
+  
+.mapboxgl-popup-content {
+    background-color: #0088cc;
+    text-align: center;
+    font-family: 'Open Sans', sans-serif;
+    color: white;
+    /* font-weight: bold; */
+}
+
+#sep {
+    margin: 20px;
+}
