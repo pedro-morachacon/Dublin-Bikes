@@ -18,6 +18,8 @@
 
   <link rel="stylesheet" type="text/css" href="/static/style.css" />
   <script type="text/javascript" src="/static/index.js"></script>
+  <!-- <script type="text/javascript" src="/static/getBestPichUpSpot.js"></script> -->
+  
   
 
 </head>
@@ -32,12 +34,17 @@
   </div>
   
   </div>  
+  
   <div class="left-nav">
+    <form id="directions-form">
     <h3>Please enter your starting location:</h3>
-    <input type="text" placeholder="Enter starting location" />
+    <input type="text"  id="start-input" placeholder="Enter starting location" />
     <h3>Please enter your destination:</h3>
-    <input type="text" placeholder="Enter destination" />
+    <input type="text" id="destination-input" placeholder="Enter destination" />
+    <input type="submit" value="Get Directions" />
+   </form> 
     <div class="datetime-inputs">
+    
       <h3>Please input the day and hour you wish to travel:</h3>
       <div class="date-input">
         <input type="date" />
@@ -61,6 +68,7 @@
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2LA3w4JdnBwPwca42yP5fqHU09utyujQ&callback=initMap&v=weekly"
     defer></script>
+    <script type="text/javascript" src="/static/showRoute.js"></script>
 </body>
 
 </html>

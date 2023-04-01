@@ -1,3 +1,4 @@
+
 // Initialize and add the map
 function initMap() {
   // The location of Dublin
@@ -22,13 +23,17 @@ function addMarkers(stations) {
       map: map,
       title: station.name,
       station_number: station.number,
-    });
+     
+    });  
+    var infowindow;
+    marker.addListener('click',function (){
+     
+        infowindow=drawInfoWindowChart(this,this.title);
 
-    marker.addListener('click', function () {
-      drawInfoWindowChart(this, this.title);
+      
     });
-  }
-}
+    
+}}
 
 function getStations() {
   fetch("/stations")
@@ -73,6 +78,7 @@ function drawInfoWindowChart(marker, stationName) {
     var infowindow = new google.maps.InfoWindow({
       content: node
     });
+    
     infowindow.open(map, marker);
   }).fail(function() {
     console.log( "error" );
@@ -85,13 +91,10 @@ function drawInfoWindowChart(marker, stationName) {
     $.get('/weather', function(data) {
         console.log(data);
         // Update the temperature and description
-        $('#temp').text(data.temperature);
+        $('#temp').text(Math.round(data.temperature-273.15)+"℃");
         $('#description').text(data.description);
     });
 };
-
-
-
 
 var map = null;
 window.initMap = initMap;
