@@ -7,7 +7,7 @@
 <html>
 
 <head>
-  <title>Dublin Bikes App</title>  
+  <title> Dublin Bikes App</title>  
   <script type=text/javascript>
     $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
   </script>
@@ -18,33 +18,31 @@
 
   <link rel="stylesheet" type="text/css" href="/static/style.css" />
   <script type="text/javascript" src="/static/index.js"></script>
-  <!-- <script type="text/javascript" src="/static/getBestPichUpSpot.js"></script> -->
-  
-  
 
+  
 </head>
 
 <body>
   <div class="top-bar">
-    Dublin Bikes
+    &nbsp Dublin Bikes
     <div class="weather">
       <span id="temp"></span>
       <span id="description">
     </div>
+    <button id="weather-forecast-btn" class="weather-forecast-btn">Weather Forecast</button>
+  </div>
+
+  <div id="weather-pane" class="weather-pane">
   </div>
   
   </div>  
   
   <div class="left-nav">
-    <form id="directions-form">
     <h3>Please enter your starting location:</h3>
-    <input type="text"  id="start-input" placeholder="Enter starting location" />
+    <input type="text" placeholder="Enter starting location" id="start"/>
     <h3>Please enter your destination:</h3>
-    <input type="text" id="destination-input" placeholder="Enter destination" />
-    <input type="submit" value="Get Directions" />
-   </form> 
+    <input type="text" placeholder="Enter destination" id="end"/>
     <div class="datetime-inputs">
-    
       <h3>Please input the day and hour you wish to travel:</h3>
       <div class="date-input">
         <input type="date" />
@@ -53,8 +51,24 @@
         <input type="time" />
       </div>
     </div>
+    <div> <h3> Choose Station</h3></div>
+    <input list="stations" name="station" id="station-input" placeholder="Select Station">
+    <datalist id="stations">
+    </datalist>
+
     <button class="plan-journey-btn">Plan your journey</button>
   </div>
+  
+  <div id="prediction-pane" class="left-nav">
+    <h3>Prediction:</h3>
+    <p id="prediction-text"></p>
+    <h3>Navigation:</h3>
+    <div id="navigation-instructions"></div>
+    <button id="go-back-btn" class="go-back-btn">Go back</button>
+  </div>
+  
+  
+
   
   <!--The div element for the map -->
   <div id="map"></div>
@@ -66,9 +80,8 @@
       with https://www.npmjs.com/package/@googlemaps/js-api-loader.
       -->
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2LA3w4JdnBwPwca42yP5fqHU09utyujQ&callback=initMap&v=weekly"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2LA3w4JdnBwPwca42yP5fqHU09utyujQ&callback=initMap&v=weekly&libraries=places,visualization"
     defer></script>
-    <script type="text/javascript" src="/static/showRoute.js"></script>
 </body>
 
 </html>
