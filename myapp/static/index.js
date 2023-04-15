@@ -1,547 +1,660 @@
-// Initialize and add the map
+google.charts.load('current', { 'packages': ['corechart'] });
+var dateInputElement;
+var markers = [];
+var map = null;
+var selectedStationValue = null;
+var stationData;
+var openInfoWindow;
+var selectedStationName = null;
+var dailyData = [5, 5, 5, 5, 5, 5, 5];
+const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const today = new Date().toISOString().substr(0, 10);
+var dailyChart;
+// Initially set title to "Predictive"
+var predictionStatus = "Predictive";
+
+var hourlyChart;
+var hourlyData = new Array(7);
+for (var i = 0; i < 7; i++) hourlyData[i] = Array(24).fill(5);
+
+var predictionChart;
+var predictionData = new Array(2);
+for (var i = 0; i < 2; i++) predictionData[i] = Array(24).fill(5);
+
+var darkMode = false;
+
+// Global funcition to map stations' names to id
+function getStationNumberByName(stationName) {
+  const station = stationData.find(station => station.name === stationName);
+  return station ? station.number : null;
+}
+
+
 async function initMap() {
   // The location of Dublin
   const dublin = { lat: 53.35014, lng: -6.266155 };
-  // The map, centered at Dublin
   map = new google.maps.Map(document.getElementById("map"), {
     zoom: 14,
     center: dublin,
   });
-  getStations();
+
+  await getStations(); // Wait for the station data to be fetched
   getWeather();
   populateStations();
+  dateInputElement = document.querySelector('.date-input input[type="date"]');
+  dateInputElement.value = today;
+  selectedStationName = document.getElementById("station-input");
+  const stationNumber = getStationNumberByName(selectedStationName.value);
 
-  const directionsService = new google.maps.DirectionsService();
-  const directionsRenderer = new google.maps.DirectionsRenderer();
+  async function fetchAvailableBikes() {
+    const response = await fetch('/available_bikes');
+    const data = await response.json();
+    return data;
+  }
 
-  directionsRenderer.setMap(map);
+  // Function to create heat map layer
+  function createHeatmapLayer(availableBikes) {
+    const heatmapData = [];
+    //Filter duplicates
+    var flag = false;
 
-  // Create the autocomplete objects for the start and end inputs
-  const startInput = document.getElementById("start");
-  const endInput = document.getElementById("end");
-
-  const options = {
-    fields: ["address_components", "geometry", "icon", "name"],
-    componentRestrictions: { country: "ie" },
-    strictBounds: false,
-  };
-
-  const placesService = new google.maps.places.PlacesService(map);
-  const startAutocomplete = new google.maps.places.Autocomplete(startInput, options);
-  const endAutocomplete = new google.maps.places.Autocomplete(endInput, options);
-
-  document.getElementById("station-input").addEventListener("input", function () {
-    selectedStationValue = this.value; 
-  });
- 
-
-  // Handle the button click
-  document.querySelector(".plan-journey-btn").addEventListener("click", async () => {
-    const start = document.getElementById("start").value;
-    const end = document.getElementById("end").value;
-    const stationInput = document.getElementById("station-input");
-    const selectedStation = selectedStationValue;
-  
-    const dateInput = document.querySelector('.date-input input[type="date"]');
-    const timeInput = document.querySelector('.time-input input[type="time"]');
-  
-    if (dateInput.value && timeInput.value) {
-      const response = await fetch('/prediction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          station_name: selectedStation,
-          date: dateInput.value,
-          time: timeInput.value
-        })
-      });
-  
-      if (response.ok) {
-        const prediction = await response.json();
-  
-        document.querySelector('.left-nav').style.display = 'none';
-        document.querySelector('#prediction-pane').style.display = 'block';
-        document.querySelector('#prediction-text').innerHTML = `There will be <span style="color:red">${Math.round(prediction.bikes)}</span> bikes and <span style="color:red">${Math.round(prediction.stands)}</span> bike stands at <span style="color:blue">${selectedStation}</span> on <span style="color:green">${dateInput.value} at ${timeInput.value}</span>.`;
-      } else {
-        alert("Error getting prediction.");
+    for (const data of availableBikes) {
+      const number = data.number;
+      if (number == 507) flag = true;
+      const availableBikes = data.available_bikes;
+      const station = stationData.find(s => s.number === number);
+      if (station) {
+        const location = new google.maps.LatLng(station.position_lat, station.position_lng);
+        const weight = availableBikes;
+        if (number != 507 || !flag) heatmapData.push({ location, weight });
       }
     }
-  
-    document.querySelector('#go-back-btn').addEventListener('click', function () {
-      document.querySelector('#prediction-pane').style.display = 'none';
-      document.querySelector('.left-nav').style.display = 'block';
+
+    const heatmap = new google.maps.visualization.HeatmapLayer({
+      data: heatmapData,
+      maxIntensity: 40,
+      radius: 30,
+      dissipating: true,
+      map: map
     });
 
-
-    directionsService.route(
-      {
-        origin: start,
-        destination: end,
-        travelMode: google.maps.TravelMode.DRIVING,
-      },
-      (response, status) => {
-        if (status === "OK") {
-          directionsRenderer.setDirections(response);
-          displayNavigationInstructions(response); 
-          resetBlueMarkers();
-
-          // Get the best pickup spots after successfully setting the directions
-          const startLatLng = response.routes[0].legs[0].start_location;
-          getBestPickupSpot(startLatLng)
-            .then((bestStations) => {
-              bestStations.forEach((station) => {
-                // Find the corresponding marker
-                const stationMarker = markers.find((marker) => {
-                  return marker.station_number === station.number;
-                });
-                console.log(stationMarker);
-                // Update the marker icon's size and color
-                if (stationMarker) {
-                  // Remove the original marker
-                  stationMarker.setMap(null);
-
-                  // Create a new marker with the blue icon
-                  const newMarker = createCustomMarker(station, "http://maps.google.com/mapfiles/ms/icons/blue-dot.png");
-
-                  // Replace the original marker in the markers array
-                  const index = markers.indexOf(stationMarker);
-                  if (index !== -1) {
-                    markers[index] = newMarker;
-                  }
-                }
-
-              });
-            })
-            .catch((error) => {
-              console.error("Error: Could not retrieve bike network data", error);
-            });
-        } else {
-          window.alert("Directions request failed due to " + status);
-        }
-      }
-    );
-
-  });
-  
-  function displayNavigationInstructions(directionsResult) {
-    const instructionsContainer = document.querySelector("#navigation-instructions");
-    instructionsContainer.innerHTML = "";
-  
-    const steps = directionsResult.routes[0].legs[0].steps;
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
-      const instruction = document.createElement("p");
-      instruction.innerHTML = step.instructions;
-      instructionsContainer.appendChild(instruction);
-    }
+    return heatmap;
   }
-  
 
   // Fetch available bikes data and create heatmap
-  const availableBikesData = await fetchAvailableBikes();
-  createHeatmapLayer(availableBikesData);
+  const availableBikes = await fetchAvailableBikes();
+  createHeatmapLayer(availableBikes);
 
-  initDarkModeToggle(map, darkModeStyles);
-}
 
-function initDarkModeToggle(map, darkModeStyles) {
-  const toggleContainer = document.createElement("div");
-  toggleContainer.classList.add("map-toggle-container");
-  map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(toggleContainer);
+  if (stationNumber) {
+    dateInputElement = document.querySelector('.date-input input[type="date"]');
+    dateInputElement.value = today;
 
-  const toggleSwitch = document.createElement("label");
-  toggleSwitch.classList.add("switch");
-  toggleContainer.appendChild(toggleSwitch);
+    updateCharts(dateInputElement.value, stationNumber);
+  } else {
+    console.log("Station not found.");
+  }
 
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
-  toggleSwitch.appendChild(toggleInput);
-
-  const toggleSlider = document.createElement("span");
-  toggleSlider.classList.add("slider", "round");
-  toggleSwitch.appendChild(toggleSlider);
-
-  let isDarkMode = false;
-  toggleInput.addEventListener("change", () => {
-    isDarkMode = !isDarkMode;
-    if (isDarkMode) {
-      map.setOptions({ styles: darkModeStyles });
-    } else {
-      map.setOptions({ styles: null });
-    }
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelector("#weather-forecast-btn").addEventListener("click", () => {
-    const weatherPane = document.getElementById("weather-pane");
-    if (weatherPane.style.display === "none") {
-      getWeatherForecast(); // Call the function to fetch and show the weather forecast
-      weatherPane.style.display = "block";
-    } else {
-      weatherPane.style.display = "none";
-    }
-  });
-});
-
-function addMarkers(stations) {
-  for (const station of stations) {
-    // console.log(station);
-    var marker = new google.maps.Marker({
-      position: {
-        lat: station.position_lat,
-        lng: station.position_lng,
-      },
-      map: map,
-      title: station.name,
-      station_number: station.number,
-      icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+  function getStations() {
+    return new Promise((resolve, reject) => {
+      fetch("/stations")
+        .then((response) => response.json())
+        .then((data) => {
+          console.log("fetch response", typeof data);
+          stationData = data;
+          addMarkers(data);
+          resolve(data);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch stations data:", error);
+          reject(error);
+        });
     });
+  }
 
-    marker.addListener('click', function () {
-      drawInfoWindowChart(this, this.title);
-      selectedStationValue = station.name;
-      console.log(selectedStationValue);
-      document.getElementById("station-input").value = selectedStationValue;
+
+  // Function to create the datalist of stations
+  function populateStations() {
+    $.get('/stations', function (data) {
+      const stations = data.map(station => `<option value="${station.name}" data-id="${station.id}">`);
+      $('#stations').html(stations.join(''));
     });
-    markers.push(marker);
+  }
+
+  // Function to add markers of the map
+  function addMarkers(stations) {
+    for (const station of stations) {
+      // console.log(station);
+      var marker = new google.maps.Marker({
+        position: {
+          lat: station.position_lat,
+          lng: station.position_lng,
+        },
+        map: map,
+        title: station.name,
+        station_number: station.number,
+        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+      });
+
+      marker.addListener('click', function () {
+        // When click markers, populate the datalist and show info window
+        drawInfoWindowChart(this, this.title);
+        selectedStationValue = station.name;
+        console.log(selectedStationValue);
+        document.getElementById("station-input").value = selectedStationValue;
+      });
+      markers.push(marker);
+    }
+  }
+
+  function drawInfoWindowChart(marker, stationName) {
+    var jqxhr = $.getJSON($SCRIPT_ROOT + "/occupancy/" + marker.station_number, function (data) {
+      data = JSON.parse(data.data);
+      var node = document.createElement('div'),
+        infowindow = new google.maps.InfoWindow(),
+        chart = new google.visualization.ColumnChart(node);
+      var chart_data = new google.visualization.DataTable();
+      chart_data.addColumn('datetime', 'Time of Day');
+      chart_data.addColumn('number', '#');
+      _.forEach(data, function (row) {
+        chart_data.addRow([new Date(row[0]), row[1]]);
+      })
+      var options = {
+        title: stationName,
+        hAxis: {
+          title: 'Time of Day',
+          titleTextStyle: { color: '#333' },
+          format: 'HH:mm',
+        },
+        vAxis: {
+          title: 'Available Bike Stands',
+          minValue: 0,
+        },
+        legend: { position: 'none' },  // Hide the legend
+        chartArea: { width: '80%', height: '70%' }
+      };
+      var chart = new google.visualization.ColumnChart(node);
+      chart.draw(chart_data, options);
+      var infowindow = new google.maps.InfoWindow({
+        content: node
+      });
+
+      if (openInfoWindow) {
+        openInfoWindow.close();
+      }
+      openInfoWindow = infowindow;
+
+      infowindow.open(map, marker);
+    }).fail(function () {
+      console.log("error");
+    })
   }
 }
 
-function createCustomMarker(station, iconUrl) {
-  const newMarker = new google.maps.Marker({
-    position: {
-      lat: station.position.lat,
-      lng: station.position.lng,
-    },
-    map: map,
-    title: station.name,
-    station_number: station.number,
-    icon: iconUrl,
-  });
+// Wrap functions inside to avoid access objects before created
+document.addEventListener("DOMContentLoaded", () => {
+  // Create charts
+  dailyChart = createDailyChart("daily-chart", dailyData);
+  hourlyChart = createHourlyChart("hourly-chart", hourlyData);
+  predictionChart = createPredictionChart("prediction-chart", predictionData);
 
-  newMarker.addListener("click", function () {
-    drawInfoWindowChart(this, this.title);
-    selectedStationValue = station.name;
-    console.log(selectedStationValue);
-    document.getElementById("station-input").value = selectedStationValue;
-  });
-
-  return newMarker;
-}
-
-function changeMarkerIcon(marker, iconUrl) {
-  marker.setIcon({
-    url: iconUrl,
-  });
-}
-
-function resetBlueMarkers() {
-  markers.forEach((marker) => {
-    if (marker.icon === "http://maps.google.com/mapfiles/ms/icons/blue-dot.png") {
-      changeMarkerIcon(marker, "http://maps.google.com/mapfiles/ms/icons/red-dot.png");
-    }
-  });
-}
-
-function getStations() {
-  fetch("/stations")
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("fetch response", typeof data);
-      stationData = data;
-      addMarkers(data);
-    });
-}
-
-google.charts.load('current', { 'packages': ['corechart'] });
-// google.charts.setOnLoadCallback(initMap);
-
-function drawInfoWindowChart(marker, stationName) {
-
-  var jqxhr = $.getJSON($SCRIPT_ROOT + "/occupancy/" + marker.station_number, function (data) {
-    data = JSON.parse(data.data);
-    var node = document.createElement('div'),
-      infowindow = new google.maps.InfoWindow(),
-      chart = new google.visualization.ColumnChart(node);
-    var chart_data = new google.visualization.DataTable();
-    chart_data.addColumn('datetime', 'Time of Day');
-    chart_data.addColumn('number', '#');
-    _.forEach(data, function (row) {
-      chart_data.addRow([new Date(row[0]), row[1]]);
-    })
-    var options = {
-      title: stationName,
-      hAxis: {
-        title: 'Time of Day',
-        titleTextStyle: { color: '#333' },
-        format: 'HH:mm',
+  function createDailyChart(chartID, chartData) {
+    var chart = document.getElementById(chartID).getContext('2d');
+    var barChart = new Chart(chart, {
+      type: 'bar',
+      data: {
+        labels: daysOfWeek,
+        datasets: [
+          {
+            label: "Average",
+            backgroundColor: "#1996ff",
+            data: chartData
+          }
+        ]
       },
-      vAxis: {
-        title: 'Available Bike Stands',
-        minValue: 0,
-      },
-      legend: { position: 'none' },  // Hide the legend
-      chartArea: { width: '80%', height: '70%' }
-    };
-    var chart = new google.visualization.ColumnChart(node);
-    chart.draw(chart_data, options);
-    var infowindow = new google.maps.InfoWindow({
-      content: node
+      options: {
+        maintainAspectRatio: true,
+        legend: { display: false },
+        title: {
+          display: true,
+          text: "Average Daily Bikes",
+          fontColor: 'grey'
+        },
+        scales: {
+          xAxes: [{
+            ticks: {
+              fontColor: 'grey',
+            },
+          }],
+          yAxes: [{
+            display: true,
+            stacked: false,
+            ticks: { beginAtZero: true,
+              fontColor: 'grey',},
+          }]
+        }
+      }
+
     });
 
-    if (openInfoWindow) {
-      openInfoWindow.close();
+    return barChart;
+  }
+
+  function createHourlyChart(chartID, hourlyData) {
+    var chart = document.getElementById(chartID).getContext('2d');
+    var lineChart = new Chart(chart, {
+      type: 'line',
+      data: {
+        labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"],
+        datasets: [{
+          data: hourlyData[0],
+          label: "Monday",
+          borderColor: "#ff0000",
+          fill: false
+        }, {
+          data: hourlyData[1],
+          label: "Tuesday",
+          borderColor: "#ff8000",
+          fill: false
+        }, {
+          data: hourlyData[2],
+          label: "Wednesday",
+          borderColor: "#ffff00",
+          fill: false
+        }, {
+          data: hourlyData[3],
+          label: "Thursday",
+          borderColor: "#00ff00",
+          fill: false
+        }, {
+          data: hourlyData[4],
+          label: "Friday",
+          borderColor: "#00ffff",
+          fill: false
+        }, {
+          data: hourlyData[5],
+          label: "Saturday",
+          borderColor: "#0000ff",
+          fill: false
+        }, {
+          data: hourlyData[6],
+          label: "Sunday",
+          borderColor: "#8000ff",
+          fill: false
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: "Average Hourly Weekly Bikes",
+          fontColor: 'grey',
+        },
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            boxWidth: 10,
+            fontColor: 'grey'
+          }
+        },
+        scales: {
+          xAxes: [{
+            ticks: {
+              fontColor: 'grey',
+            },
+          }],
+          yAxes: [{
+            ticks: {
+              fontColor: 'grey',
+            },
+          }],
+        },
+      }
+    });
+
+    return lineChart;
+  }
+
+  function createPredictionChart(chartID, chartData) {
+    var chart = document.getElementById(chartID).getContext('2d');
+
+    var lineChart = new Chart(chart, {
+      type: 'line',
+      data: {
+        labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"],
+        datasets: [{
+          data: chartData[0],
+          label: "Available Bikes",
+          borderColor: "#3e95cd",
+          fill: false
+        }, {
+          data: chartData[1],
+          label: "Available Stands",
+          borderColor: "#8e5ea2",
+          fill: false
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: predictionStatus + " Hourly Daily Occupancy",
+          fontColor: 'grey',
+        },
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            boxWidth: 10,
+            fontColor: 'grey'
+          }
+        },
+        scales: {
+          xAxes: [{
+            ticks: {
+              fontColor: 'grey',
+            },
+          }],
+          yAxes: [{
+            ticks: {
+              fontColor: 'grey',
+            },
+          }],
+        },
+      }
+    });
+
+    return lineChart;
+  }
+
+  async function updateCharts(date, station_number) {
+    console.log("updateCharts called with date:", date, "and station_number:", station_number);
+
+    var predictionData = await fetchDataForPredictionChart(date, station_number);
+    console.log("Fetched predictionData:", predictionData);
+    for (var i = 0; i < 2; i++) {
+      predictionChart.data.datasets[i].data = predictionData[i];
     }
-    openInfoWindow = infowindow;
+    predictionChart.options.title.text = predictionStatus + " Hourly Daily Occupancy";
+    predictionChart.update();
 
-    infowindow.open(map, marker);
-  }).fail(function () {
-    console.log("error");
-  })
-}
+    var dailyData = await fetchDailyAvgAvailability(station_number);
+    var dailyChartData = dailyData.map(item => parseFloat(item.avg_bikes));
+    console.log("Fetched dailyData:", dailyData);
+    console.log("Processed dailyData:", dailyChartData);
 
-function getWeather() {
-  // Get the latest weather data
-  $.get('/weather', function (data) {
-    console.log(data);
-    // Update the temperature and description
-    $('#temp').text(Math.round(data.temperature - 273.15) + "℃");
-    $('#description').text(data.description);
-  });
-};
+    var hourlyData = await fetchHourlyWeeklyAvgAvailability(station_number);
+    var hourlyChartData = Array(7).fill().map(() => Array(24).fill(0));
 
-function getWeatherForecast() {
-  $.get('https://api.openweathermap.org/data/2.5/forecast?q=Dublin&appid=ae15fcd8aa527f306b31be332291daa1', function (data) {
-    let forecastHTML = '';
-    for (let i = 0; i < 8; i++) { // Loop through the next 8 forecasts (24 hours)
-      const forecast = data.list[i];
-      const timestamp = new Date(forecast.dt * 1000);
-      const hours = timestamp.getHours();
-      const temperature = Math.round(forecast.main.temp - 273.15);
-      forecastHTML += `${hours}:00 ${temperature}°C &emsp;`;
+    hourlyData.forEach(item => {
+      const dayIndex = item.day_of_week - 1;
+      const hourIndex = item.hour_of_day;
+      hourlyChartData[dayIndex][hourIndex] = parseFloat(item.avg_bikes);
+    });
+    console.log("Fetched hourlyData:", hourlyData);
+    console.log("Processed hourlyData:", hourlyChartData);
+
+    // Update the charts using the fetched data
+    dailyChart.data.datasets[0].data = dailyChartData;
+    dailyChart.update();
+
+    for (var i = 0; i < hourlyChartData.length; i++) {
+      hourlyChart.data.datasets[i].data = hourlyChartData[i];
     }
-    $('#weather-pane').html(forecastHTML);
-  });
-}
+    hourlyChart.update();
+  }
 
+  async function fetchDailyAvgAvailability(station_number) {
+    const response = await fetch(`/daily_avg_availability/${station_number}`);
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error("Failed to fetch daily average availability data");
+    }
+  }
 
-function getBestPickupSpot(startLatLng) {
-  return new Promise((resolve, reject) => {
-    const url = "https://api.jcdecaux.com/vls/v1/stations?contract=dublin&apiKey=d630c0ca29bdecff74ec4e2480a0e48fb5f9326f";
+  async function fetchHourlyWeeklyAvgAvailability(station_number) {
+    const response = await fetch(`/hourly_weekly_avg_availability/${station_number}`);
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new Error("Failed to fetch hourly weekly availability data");
+    }
+  }
 
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        const stations = data.filter(station => station.available_bikes > 0);
+  async function fetchDataForPredictionChart(date, station_id) {
+    if (date < today) {
+      predictionStatus = "Historical"
 
-        stations.forEach(station => {
-          const stationLatitude = station.position.lat;
-          const stationLongitude = station.position.lng;
-          const earthRadius = 6371; // in kilometers
-          const dLat = deg2rad(stationLatitude - startLatLng.lat());
-          const dLng = deg2rad(stationLongitude - startLatLng.lng());
-          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(deg2rad(startLatLng.lat())) * Math.cos(deg2rad(stationLatitude)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          const distance = earthRadius * c;
-          station.distance = distance;
+      // Get historical data
+      const response = await fetch(`/hourly_avg_availability/${date}/${station_id}`);
+      return await response.json();
+    } else {
+      predictionStatus = "Predictive"
+      // Get prediction data
+      const predictionsBikes = [];
+      const predictionsStands = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const time = `${hour.toString().padStart(2, '0')}:00`;
+        const response = await fetch('/prediction', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            station_id: station_id,
+            date: date,
+            time: time,
+          }),
         });
 
-        const sortedStations = stations.sort((a, b) => (a.distance - b.distance) || (a.number - b.number));
-
-        const bestStations = sortedStations.slice(0, 3);
-        console.log(bestStations);
-
-        if (bestStations.length > 0) {
-          resolve(bestStations);
-
-        } else {
-          resolve([sortedStations[0].number]);
-        }
-      })
-      .catch(error => {
-        console.error("Error: Could not retrieve bike network data", error);
-        reject("Error: Could not retrieve bike network data");
-      });
-  });
-}
-
-function deg2rad(degrees) {
-  return degrees * (Math.PI / 180);
-}
-
-async function fetchAvailableBikes() {
-  const response = await fetch('/available_bikes');
-  const data = await response.json();
-  return data;
-}
-
-function createHeatmapLayer(availableBikesData) {
-  const heatmapData = [];
-  var flag = false;
-
-  for (const data of availableBikesData) {
-    const number = data.number;
-    if (number == 507) flag = true;
-    const availableBikes = data.available_bikes;
-    const station = stationData.find(s => s.number === number);
-    if (station) {
-      const location = new google.maps.LatLng(station.position_lat, station.position_lng);
-      const weight = availableBikes;
-      if (number != 507 || !flag) heatmapData.push({ location, weight });
+        const prediction = await response.json();
+        predictionsBikes.push(prediction.bikes);
+        predictionsStands.push(prediction.stands);
+      }
+      return [predictionsBikes, predictionsStands]; // Return predictions for available bikes and bike stands
     }
   }
 
-  const heatmap = new google.maps.visualization.HeatmapLayer({
-    data: heatmapData,
-    maxIntensity: 40,
-    radius: 30,
-    dissipating: true,
-    map: map
-  });
+  //Display charts button
+  document.getElementById("display-charts-btn").addEventListener("click", () => {
+    const selectedDate = document.querySelector('.date-input input[type="date"]').value;
+    const selectedStationName = document.getElementById("station-input").value;
+    const selectedStationNumber = getStationNumberByName(selectedStationName);
 
-  return heatmap;
-}
-
-function populateStations() {
-  $.get('/stations', function (data) {
-    const stations = data.map(station => `<option value="${station.name}" data-id="${station.id}">`);
-    $('#stations').html(stations.join(''));
-  });
-}
-
-
-
-function createDarkLightModeControl(map) {
-  const controlDiv = document.createElement("div");
-
-  const controlUI = document.createElement("div");
-  controlUI.style.backgroundColor = "#fff";
-  controlUI.style.border = "2px solid #fff";
-  controlUI.style.borderRadius = "3px";
-  controlUI.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.3)";
-  controlUI.style.cursor = "pointer";
-  controlUI.style.marginBottom = "22px";
-  controlUI.style.marginLeft = "10px";
-  controlUI.style.textAlign = "center";
-  controlUI.title = "Click to toggle dark/light mode";
-  controlDiv.appendChild(controlUI);
-
-  const controlText = document.createElement("div");
-  controlText.style.color = "rgb(25,25,25)";
-  controlText.style.fontFamily = "Roboto,Arial,sans-serif";
-  controlText.style.fontSize = "16px";
-  controlText.style.lineHeight = "38px";
-  controlText.style.paddingLeft = "5px";
-  controlText.style.paddingRight = "5px";
-  controlText.innerHTML = "Dark/Light";
-  controlUI.appendChild(controlText);
-
-  controlUI.addEventListener("click", function () {
-    const currentStyles = map.get('styles');
-    if (currentStyles) {
-      map.set('styles', null);
+    if (selectedStationNumber) {
+      updateCharts(selectedDate, selectedStationNumber);
+      updateStationInformation(selectedStationNumber);
     } else {
-      map.set('styles', darkModeStyles);
+      console.log("Station not found.");
     }
   });
 
-  map.controls[google.maps.ControlPosition.TOP_LEFT].push(controlDiv);
-}
+  // Weather button
+  document.querySelector("#weather-forecast-btn").addEventListener("click", () => {
+    const weatherPane = document.getElementById("weather-pane");
+    const detailedWeatherPane = document.getElementById("detailed-weather-pane");
+    if (weatherPane.style.display === "none") {
+      getWeatherForecast();
+      weatherPane.style.display = "block";
+      detailedWeatherPane.style.height = "0px"; // Hide the detailed weather pane
+    } else {
+      weatherPane.style.display = "none";
+      detailedWeatherPane.style.height = "0px";
+    }
+  });
 
+  function updateStationInformation(stationNumber) {
+    // Fetch station data
+    $.get(`https://api.jcdecaux.com/vls/v1/stations/${stationNumber}?contract=dublin&apiKey=534bc23767749c9092ddc16b51fe73fc4758c7ce`, function (station) {
+      if (station) {
+        $("#current-station").text("***Current Station: " + station.name);
+        $("#station-status").text("Status: " + station.status);
+        $("#current-available-bikes").text("Available Bikes: " + station.available_bikes);
+        $("#current-available-bike-stands").text("Available Bike Stands: " + station.available_bike_stands);
+      }
+    });
+  }
 
-const darkModeStyles = [
-  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-  {
-    featureType: "administrative.locality",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [{ color: "#263c3f" }],
-  },
-  {
-    featureType: "poi.park",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#6b9a76" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#38414e" }],
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#212a37" }],
-  },
-  {
-    featureType: "road",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#9ca5b3" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#746855" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#1f2835" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#f3d19c" }],
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#2f3948" }],
-  },
-  {
-    featureType: "transit.station",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#d59563" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#17263c" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#515c6d" }],
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.stroke",
-    stylers: [{ color: "#17263c" }],
-  },
-];
+  const darkModeStyles = [
+    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+    {
+      featureType: "administrative.locality",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "geometry",
+      stylers: [{ color: "#263c3f" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#6b9a76" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry",
+      stylers: [{ color: "#38414e" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#212a37" }],
+    },
+    {
+      featureType: "road",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#9ca5b3" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry",
+      stylers: [{ color: "#746855" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#1f2835" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#f3d19c" }],
+    },
+    {
+      featureType: "transit",
+      elementType: "geometry",
+      stylers: [{ color: "#2f3948" }],
+    },
+    {
+      featureType: "transit.station",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#d59563" }],
+    },
+    {
+      featureType: "water",
+      elementType: "geometry",
+      stylers: [{ color: "#17263c" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.fill",
+      stylers: [{ color: "#515c6d" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text.stroke",
+      stylers: [{ color: "#17263c" }],
+    },
+  ];
 
+  const darkModeChartOptions = {
+    title: {
+      fontColor: '#f3d19c',
+    },
+    scales: {
+      xAxes: [{
+        ticks: {
+          fontColor: '#f3d19c',
+        },
+      }],
+      yAxes: [{
+        ticks: {
+          fontColor: '#f3d19c',
+        },
+      }],
+    },
+  };
+  
+  const lightModeChartOptions = {
+    title: {
+      fontColor: 'grey',
+    },
+    scales: {
+      xAxes: [{
+        ticks: {
+          fontColor: 'grey',
+        },
+      }],
+      yAxes: [{
+        ticks: {
+          fontColor: 'grey',
+        },
+      }],
+    },
+  };
 
+  document.getElementById("theme-btn").addEventListener("click", toggleTheme);
 
+  function toggleTheme() {
+    darkMode = !darkMode;
+    const btn = document.getElementById("theme-btn");
+  
+    // Toggle dark mode class on body
+    document.body.classList.toggle("dark-mode");
+  
+    // Detailed pane
+    const detailedPane = document.getElementById('detailed-weather-pane');
+    if (detailedPane) {
+      detailedPane.classList.toggle('dark-mode', darkMode);
+    }
+  
+    // Update chart options
+    const chartOptions = darkMode ? darkModeChartOptions : lightModeChartOptions;
+    Object.assign(dailyChart.options.title, chartOptions.title);
+    Object.assign(dailyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
+    Object.assign(dailyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
+    dailyChart.update();
+  
+    Object.assign(hourlyChart.options.title, chartOptions.title);
+    Object.assign(hourlyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
+    Object.assign(hourlyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
+    hourlyChart.update();
+  
+    Object.assign(predictionChart.options.title, chartOptions.title);
+    Object.assign(predictionChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
+    Object.assign(predictionChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
+    predictionChart.update();
+  
+    // Change the button text
+    if (btn.innerHTML === "Dark Mode") {
+      btn.innerHTML = "Light Mode";
+      map.setOptions({ styles: darkModeStyles });
+    } else {
+      btn.innerHTML = "Dark Mode";
+      map.setOptions({ styles: null });
+    }
+  }
+  
+  window.initMap = initMap;
 
-var map = null;
-var markers = []
-var selectedStationValue = null;;
-var stationData;
-var openInfoWindow;
+});
 
-window.initMap = initMap;
