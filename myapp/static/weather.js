@@ -40,7 +40,7 @@ function displayForecastTable(data) {
             if (previousDate !== '') {
                 // Add previous day's data to the table
                 forecastHTML += `<tr><td>${previousDate}</td><td>${summary}</td><td>${icon}</td><td>${minTemp}&deg;C</td><td>${maxTemp}&deg;C</td>`;
-                forecastHTML += `<td><button class="details-btn" data-date="${previousDate}">Show details</button></td></tr>`;
+                forecastHTML += `<td><button class="details-btn" data-date="${previousDate}">SHOW</button></td></tr>`;
             }
 
             // Update values for the new date
@@ -60,7 +60,7 @@ function displayForecastTable(data) {
         if (index === data.list.length - 1) {
             // Add last day's data to the table
             forecastHTML += `<tr><td>${previousDate}</td><td>${summary}</td><td>${icon}</td><td>${minTemp}&deg;C</td><td>${maxTemp}&deg;C</td>`;
-            forecastHTML += `<td><button class="details-btn" data-date="${previousDate}">Show details</button></td></tr>`;
+            forecastHTML += `<td><button class="details-btn" data-date="${previousDate}">SHOW</button></td></tr>`;
         }
 
         document.querySelectorAll(".details-btn").forEach(button => {

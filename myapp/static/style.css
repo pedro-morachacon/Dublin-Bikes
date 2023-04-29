@@ -1,14 +1,15 @@
 #map {
   position: absolute;
-  bottom: 65px;
-  left: 650px;
-  height: calc(100% - 65px - 65px);
-  width: calc(100% - 650px);
+  bottom: 100px;
+  left: 50%;
+  height: calc(100% - 65px - 100px);
+  width: 50%;
   z-index: 1;
+  border-radius: 10px;
 }
 
 .appTitile{
-  color:#1996ff;
+  color:#5e6cef;
   font-family: Impact;
 }
 
@@ -18,19 +19,20 @@ html, body {
   padding: 0;
 }
 
+
 .left-nav {
   position: fixed;
   top: 65px;
   left: 0;
-  width: 650px;
+  width: 50%;
   height: calc(100% - 65px);
-  background-color: #33cc99;
+  background-color: #FFFDFA;
   color: #fff;
   padding: 20px;
   box-sizing: border-box;
   z-index: 0;
   overflow-y: auto;
-  color:rgb(255, 255, 30);
+  color:rgb(68, 179, 205);
 }
 
 .left-nav h3 {
@@ -70,7 +72,7 @@ html, body {
   height: 65px;
   width: 100%;
   top: 0;
-  background-color: #33cc99;
+  background-color: #FFFDFA;
   position: fixed;
   align-items: center;
   justify-content: center;
@@ -81,22 +83,40 @@ html, body {
 
 .bottom-bar {
   position: fixed;
-  height: 65px;
-  left: 650px;
+  height: 100px;
+  left: 50%;
   width: 100%;
   bottom: 0px;
-  background-color: #33cc99;
+  background-color: #FFFDFA;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 15px;
   display: flex;
   color:#5e6cef;
   align-items: center;
   text-align: left;
+  overflow-x: auto;
+  flex-direction: row; 
+  font-family: Arial;
+}
+
+#bottom-bar-items {
+  color: rgb(122, 120, 120);
+  display: flex;
+  margin: 0 10px 0 0;
+  padding: 0 0 0 0;
+  flex: none;
+  align-items: center;
+  font-weight: bolder;
+}
+
+#bottom-bar-items p {
+  color: #5e6cef;
+  margin: 0 0 0 10px;
 }
 
 .bottom-bar div {
   display: flex;
-  margin: 0 0 0 0;
+  margin: 0 10px 0 0;
   padding: 0 0 0 0;
   flex: none;
 }
@@ -108,7 +128,6 @@ html, body {
 
 .availability-section {
   width: 100%;
-  max-width: 550px;
   height: auto;
 }
 
@@ -145,6 +164,7 @@ tr:first-child {
   display: inline-block;
   font-size: 16px;
   margin: 4px 2px;
+  border-radius: 5cm;
 }
 
 .detail {
@@ -159,7 +179,7 @@ tr:first-child {
 #detailed-weather-pane {
   position: absolute;
   top: 465px;
-  left: 650px;
+  left: 50%;
   right: 0;
   background-color: rgba(255, 255, 255, 0.7);
   text-align: center;
@@ -168,6 +188,7 @@ tr:first-child {
   overflow: hidden;
   transition: height 0.3s ease-in-out;
   overflow-y: auto;
+  font-family: Arial;
 }
 
 .detailed-weather-pane.active {
@@ -175,9 +196,10 @@ tr:first-child {
 }
 
 #temp, #description {
-  font-size: 16px;
-  font-weight: normal;
-  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  color: rgb(68, 179, 205);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
 }
 
 .weather {
@@ -188,18 +210,20 @@ tr:first-child {
 .weather-forecast-btn {
   cursor: pointer;
   border-radius: 5cm;
-  width: 200px;
+  width: 100px;
   height: 30px;
   align-items: center;
-  background-color: rgb(255, 255, 30);
-  color: grey;
+  background-color: rgb(68, 179, 205);
+  color: white;
   border:none;
+  font-family: Arial;
+  font-weight: bold;
 }
 
 #weather-pane {
   position: absolute;
   top: 65px;
-  left: 650px;
+  left: 50%;
   right: 0;
   background-color: rgba(255, 255, 255, 0.9);
   /* padding: 5px; */
@@ -210,15 +234,18 @@ tr:first-child {
   transition: max-height 0.3s ease-in-out;
   display: none;
   overflow-y: auto;
+  font-family: Arial;
 }
 
 #display-charts-btn {
   border-radius: 5cm;
-  width: 350px;
+  width: 150px;
   height: 30px;
   align-items: center;
-  background-color: rgb(255, 255, 30);
-  color: grey;
+  background-color: rgb(68, 179, 205);
+  color: white;
+  font-family: Arial;
+  font-weight: bold;
 }
 
 .theme-btn {
@@ -228,12 +255,14 @@ tr:first-child {
   top: 15px;
   right: 10px;
   width: 100px;
-  background-color: #1996ff;
+  background-color: #5e6cef;
   border: none;
   color: #fff;
   font-size: 16px;
   cursor: pointer;
   text-transform: uppercase;
+  font-family: Arial;
+  font-weight: bold;
 }
 
 .dark-mode {
@@ -282,5 +311,9 @@ tr:first-child {
 }
 
 .dark-mode .detailed-weather-pane {
-  color:#5e6cef;
+  color:#5966da;
+}
+
+.dark-mode #bottom-bar-items {
+  color: #d59563
 }

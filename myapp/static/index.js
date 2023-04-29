@@ -143,7 +143,7 @@ async function initMap() {
         console.log(selectedStationValue);
         document.getElementById("station-input").value = selectedStationValue;
       });
-      markers.push(marker);
+      markers[station.number] = marker;
     }
   }
 
@@ -199,8 +199,8 @@ document.addEventListener("DOMContentLoaded", () => {
   predictionChart = createPredictionChart("prediction-chart", predictionData);
 
   function createDailyChart(chartID, chartData) {
-    var chart = document.getElementById(chartID).getContext('2d');
-    var barChart = new Chart(chart, {
+    var ins = document.getElementById(chartID).getContext('2d');
+    var chart = new Chart(ins, {
       type: 'bar',
       data: {
         labels: daysOfWeek,
@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         legend: { display: false },
         title: {
           display: true,
-          text: "Average Daily Bikes",
+          text: "Average Daily Available Bikes",
           fontColor: 'grey'
         },
         scales: {
@@ -229,20 +229,22 @@ document.addEventListener("DOMContentLoaded", () => {
           yAxes: [{
             display: true,
             stacked: false,
-            ticks: { beginAtZero: true,
-              fontColor: 'grey',},
+            ticks: {
+              beginAtZero: true,
+              fontColor: 'grey',
+            },
           }]
         }
       }
 
     });
 
-    return barChart;
+    return chart;
   }
 
   function createHourlyChart(chartID, hourlyData) {
-    var chart = document.getElementById(chartID).getContext('2d');
-    var lineChart = new Chart(chart, {
+    var ins = document.getElementById(chartID).getContext('2d');
+    var chart = new Chart(ins, {
       type: 'line',
       data: {
         labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"],
@@ -286,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
       options: {
         title: {
           display: true,
-          text: "Average Hourly Weekly Bikes",
+          text: "Average Hourly Weekly Available Bikes",
           fontColor: 'grey',
         },
         legend: {
@@ -312,13 +314,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    return lineChart;
+    return chart;
   }
 
   function createPredictionChart(chartID, chartData) {
-    var chart = document.getElementById(chartID).getContext('2d');
+    var ins = document.getElementById(chartID).getContext('2d');
 
-    var lineChart = new Chart(chart, {
+    var chart = new Chart(ins, {
       type: 'line',
       data: {
         labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"],
@@ -329,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
           fill: false
         }, {
           data: chartData[1],
-          label: "Available Stands",
+          label: "Available Bike Stands",
           borderColor: "#8e5ea2",
           fill: false
         }]
@@ -363,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    return lineChart;
+    return chart;
   }
 
   async function updateCharts(date, station_number) {
@@ -460,10 +462,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedDate = document.querySelector('.date-input input[type="date"]').value;
     const selectedStationName = document.getElementById("station-input").value;
     const selectedStationNumber = getStationNumberByName(selectedStationName);
+    console.log(markers);
 
     if (selectedStationNumber) {
       updateCharts(selectedDate, selectedStationNumber);
       updateStationInformation(selectedStationNumber);
+
+      // Trigger the click event on the marker associated with the selected station number
+      if (markers[selectedStationNumber]) {
+        google.maps.event.trigger(markers[selectedStationNumber], 'click');
+      }
     } else {
       console.log("Station not found.");
     }
@@ -487,10 +495,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fetch station data
     $.get(`https://api.jcdecaux.com/vls/v1/stations/${stationNumber}?contract=dublin&apiKey=534bc23767749c9092ddc16b51fe73fc4758c7ce`, function (station) {
       if (station) {
-        $("#current-station").text("***Current Station: " + station.name);
-        $("#station-status").text("Status: " + station.status);
-        $("#current-available-bikes").text("Available Bikes: " + station.available_bikes);
-        $("#current-available-bike-stands").text("Available Bike Stands: " + station.available_bike_stands);
+        $("#current-station").text(station.name);
+        $("#station-status").text(station.status);
+        $("#current-available-bikes").text(station.available_bikes);
+        $("#current-available-bike-stands").text(station.available_bike_stands);
       }
     });
   }
@@ -593,7 +601,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }],
     },
   };
-  
+
   const lightModeChartOptions = {
     title: {
       fontColor: 'grey',
@@ -617,43 +625,43 @@ document.addEventListener("DOMContentLoaded", () => {
   function toggleTheme() {
     darkMode = !darkMode;
     const btn = document.getElementById("theme-btn");
-  
+
     // Toggle dark mode class on body
     document.body.classList.toggle("dark-mode");
-  
+
     // Detailed pane
     const detailedPane = document.getElementById('detailed-weather-pane');
     if (detailedPane) {
       detailedPane.classList.toggle('dark-mode', darkMode);
     }
-  
+
     // Update chart options
     const chartOptions = darkMode ? darkModeChartOptions : lightModeChartOptions;
     Object.assign(dailyChart.options.title, chartOptions.title);
     Object.assign(dailyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(dailyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     dailyChart.update();
-  
+
     Object.assign(hourlyChart.options.title, chartOptions.title);
     Object.assign(hourlyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(hourlyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     hourlyChart.update();
-  
+
     Object.assign(predictionChart.options.title, chartOptions.title);
     Object.assign(predictionChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(predictionChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     predictionChart.update();
-  
+
     // Change the button text
-    if (btn.innerHTML === "Dark Mode") {
-      btn.innerHTML = "Light Mode";
+    if (btn.innerHTML === "DARK MODE") {
+      btn.innerHTML = "LIGHT MODE";
       map.setOptions({ styles: darkModeStyles });
     } else {
-      btn.innerHTML = "Dark Mode";
+      btn.innerHTML = "DARK MODE";
       map.setOptions({ styles: null });
     }
   }
-  
+
   window.initMap = initMap;
 
 });
