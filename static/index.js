@@ -143,7 +143,7 @@ async function initMap() {
         console.log(selectedStationValue);
         document.getElementById("station-input").value = selectedStationValue;
       });
-      markers.push(marker);
+      markers[station.number] = marker;
     }
   }
 
@@ -193,6 +193,19 @@ async function initMap() {
 
 // Wrap functions inside to avoid access objects before created
 document.addEventListener("DOMContentLoaded", () => {
+  // Load Lottie animation
+  const lottieLoader = document.getElementById("loader");
+  const animation = lottie.loadAnimation({
+    container: lottieLoader,
+    renderer: "svg",
+    loop: true,
+    autoplay: false,
+    path: "/static/loader.json",
+  });
+
+  // Hide the loader initially
+  lottieLoader.style.display = "none";
+
   // Create charts
   dailyChart = createDailyChart("daily-chart", dailyData);
   hourlyChart = createHourlyChart("hourly-chart", hourlyData);
@@ -229,8 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
           yAxes: [{
             display: true,
             stacked: false,
-            ticks: { beginAtZero: true,
-              fontColor: 'grey',},
+            ticks: {
+              beginAtZero: true,
+              fontColor: 'grey',
+            },
           }]
         }
       }
@@ -366,42 +381,96 @@ document.addEventListener("DOMContentLoaded", () => {
     return lineChart;
   }
 
+  // async function updateCharts(date, station_number) {
+  //   console.log("updateCharts called with date:", date, "and station_number:", station_number);
+
+  //   var predictionData = await fetchDataForPredictionChart(date, station_number);
+  //   console.log("Fetched predictionData:", predictionData);
+  //   for (var i = 0; i < 2; i++) {
+  //     predictionChart.data.datasets[i].data = predictionData[i];
+  //   }
+  //   predictionChart.options.title.text = predictionStatus + " Hourly Daily Occupancy";
+  //   predictionChart.update();
+
+  //   var dailyData = await fetchDailyAvgAvailability(station_number);
+  //   var dailyChartData = dailyData.map(item => parseFloat(item.avg_bikes));
+  //   console.log("Fetched dailyData:", dailyData);
+  //   console.log("Processed dailyData:", dailyChartData);
+
+  //   var hourlyData = await fetchHourlyWeeklyAvgAvailability(station_number);
+  //   var hourlyChartData = Array(7).fill().map(() => Array(24).fill(0));
+
+  //   hourlyData.forEach(item => {
+  //     const dayIndex = item.day_of_week - 1;
+  //     const hourIndex = item.hour_of_day;
+  //     hourlyChartData[dayIndex][hourIndex] = parseFloat(item.avg_bikes);
+  //   });
+  //   console.log("Fetched hourlyData:", hourlyData);
+  //   console.log("Processed hourlyData:", hourlyChartData);
+
+  //   // Update the charts using the fetched data
+  //   dailyChart.data.datasets[0].data = dailyChartData;
+  //   dailyChart.update();
+
+  //   for (var i = 0; i < hourlyChartData.length; i++) {
+  //     hourlyChart.data.datasets[i].data = hourlyChartData[i];
+  //   }
+  //   hourlyChart.update();
+  // }
+
   async function updateCharts(date, station_number) {
     console.log("updateCharts called with date:", date, "and station_number:", station_number);
-
-    var predictionData = await fetchDataForPredictionChart(date, station_number);
-    console.log("Fetched predictionData:", predictionData);
-    for (var i = 0; i < 2; i++) {
-      predictionChart.data.datasets[i].data = predictionData[i];
+  
+    // Show the loader and hide the charts
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('prediction-chart').style.display = 'none';
+    document.getElementById('daily-chart').style.display = 'none';
+    document.getElementById('hourly-chart').style.display = 'none';
+  
+    try {
+      var predictionData = await fetchDataForPredictionChart(date, station_number);
+      console.log("Fetched predictionData:", predictionData);
+      for (var i = 0; i < 2; i++) {
+        predictionChart.data.datasets[i].data = predictionData[i];
+      }
+      predictionChart.options.title.text = predictionStatus + " Hourly Daily Occupancy";
+      predictionChart.update();
+  
+      var dailyData = await fetchDailyAvgAvailability(station_number);
+      var dailyChartData = dailyData.map(item => parseFloat(item.avg_bikes));
+      console.log("Fetched dailyData:", dailyData);
+      console.log("Processed dailyData:", dailyChartData);
+  
+      var hourlyData = await fetchHourlyWeeklyAvgAvailability(station_number);
+      var hourlyChartData = Array(7).fill().map(() => Array(24).fill(0));
+  
+      hourlyData.forEach(item => {
+        const dayIndex = item.day_of_week - 1;
+        const hourIndex = item.hour_of_day;
+        hourlyChartData[dayIndex][hourIndex] = parseFloat(item.avg_bikes);
+      });
+      console.log("Fetched hourlyData:", hourlyData);
+      console.log("Processed hourlyData:", hourlyChartData);
+  
+      // Update the charts using the fetched data
+      dailyChart.data.datasets[0].data = dailyChartData;
+      dailyChart.update();
+  
+      for (var i = 0; i < hourlyChartData.length; i++) {
+        hourlyChart.data.datasets[i].data = hourlyChartData[i];
+      }
+      hourlyChart.update();
+  
+      // Hide the loader and show the charts
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('prediction-chart').style.display = 'block';
+      document.getElementById('daily-chart').style.display = 'block';
+      document.getElementById('hourly-chart').style.display = 'block';
+    } catch (error) {
+      console.error("Error updating charts:", error);
     }
-    predictionChart.options.title.text = predictionStatus + " Hourly Daily Occupancy";
-    predictionChart.update();
-
-    var dailyData = await fetchDailyAvgAvailability(station_number);
-    var dailyChartData = dailyData.map(item => parseFloat(item.avg_bikes));
-    console.log("Fetched dailyData:", dailyData);
-    console.log("Processed dailyData:", dailyChartData);
-
-    var hourlyData = await fetchHourlyWeeklyAvgAvailability(station_number);
-    var hourlyChartData = Array(7).fill().map(() => Array(24).fill(0));
-
-    hourlyData.forEach(item => {
-      const dayIndex = item.day_of_week - 1;
-      const hourIndex = item.hour_of_day;
-      hourlyChartData[dayIndex][hourIndex] = parseFloat(item.avg_bikes);
-    });
-    console.log("Fetched hourlyData:", hourlyData);
-    console.log("Processed hourlyData:", hourlyChartData);
-
-    // Update the charts using the fetched data
-    dailyChart.data.datasets[0].data = dailyChartData;
-    dailyChart.update();
-
-    for (var i = 0; i < hourlyChartData.length; i++) {
-      hourlyChart.data.datasets[i].data = hourlyChartData[i];
-    }
-    hourlyChart.update();
   }
+  
 
   async function fetchDailyAvgAvailability(station_number) {
     const response = await fetch(`/daily_avg_availability/${station_number}`);
@@ -462,12 +531,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedStationNumber = getStationNumberByName(selectedStationName);
 
     if (selectedStationNumber) {
-      updateCharts(selectedDate, selectedStationNumber);
       updateStationInformation(selectedStationNumber);
+
+      // Trigger the click event on the marker associated with the selected station number
+      if (markers[selectedStationNumber]) {
+        google.maps.event.trigger(markers[selectedStationNumber], 'click');
+      }
+      else {
+        console.log("Station not found.");
+      }
     } else {
       console.log("Station not found.");
     }
   });
+
 
   // Weather button
   document.querySelector("#weather-forecast-btn").addEventListener("click", () => {
@@ -487,10 +564,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fetch station data
     $.get(`https://api.jcdecaux.com/vls/v1/stations/${stationNumber}?contract=dublin&apiKey=534bc23767749c9092ddc16b51fe73fc4758c7ce`, function (station) {
       if (station) {
-        $("#current-station").text("***Current Station: " + station.name);
-        $("#station-status").text("Status: " + station.status);
-        $("#current-available-bikes").text("Available Bikes: " + station.available_bikes);
-        $("#current-available-bike-stands").text("Available Bike Stands: " + station.available_bike_stands);
+        $("#current-station").text(station.name);
+        $("#station-status").text(station.status);
+        $("#current-available-bikes").text(station.available_bikes);
+        $("#current-available-bike-stands").text(station.available_bike_stands);
       }
     });
   }
@@ -593,7 +670,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }],
     },
   };
-  
+
   const lightModeChartOptions = {
     title: {
       fontColor: 'grey',
@@ -617,33 +694,33 @@ document.addEventListener("DOMContentLoaded", () => {
   function toggleTheme() {
     darkMode = !darkMode;
     const btn = document.getElementById("theme-btn");
-  
+
     // Toggle dark mode class on body
     document.body.classList.toggle("dark-mode");
-  
+
     // Detailed pane
     const detailedPane = document.getElementById('detailed-weather-pane');
     if (detailedPane) {
       detailedPane.classList.toggle('dark-mode', darkMode);
     }
-  
+
     // Update chart options
     const chartOptions = darkMode ? darkModeChartOptions : lightModeChartOptions;
     Object.assign(dailyChart.options.title, chartOptions.title);
     Object.assign(dailyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(dailyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     dailyChart.update();
-  
+
     Object.assign(hourlyChart.options.title, chartOptions.title);
     Object.assign(hourlyChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(hourlyChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     hourlyChart.update();
-  
+
     Object.assign(predictionChart.options.title, chartOptions.title);
     Object.assign(predictionChart.options.scales.xAxes[0], chartOptions.scales.xAxes[0]);
     Object.assign(predictionChart.options.scales.yAxes[0], chartOptions.scales.yAxes[0]);
     predictionChart.update();
-  
+
     // Change the button text
     if (btn.innerHTML === "Dark Mode") {
       btn.innerHTML = "Light Mode";
@@ -653,7 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
       map.setOptions({ styles: null });
     }
   }
-  
+
   window.initMap = initMap;
 
 });
