@@ -2,7 +2,7 @@
 
 // Function to get the weather forecast from the API
 function getWeatherForecast() {
-    $.get('https://api.openweathermap.org/data/2.5/forecast?q=Dublin&appid=ae15fcd8aa527f306b31be332291daa1', function (data) {
+    $.get('https://api.openweathermap.org/data/2.5/forecast?q=Dublin&appid=', function (data) {
         displayForecastTable(data);
     });
 }
@@ -10,7 +10,7 @@ function getWeatherForecast() {
 // Function to get the current weather from the API
 function getWeather() {
     // Get the latest weather data
-    $.get('https://api.openweathermap.org/data/2.5/weather?q=Dublin&appid=ae15fcd8aa527f306b31be332291daa1', function (data) {
+    $.get('https://api.openweathermap.org/data/2.5/weather?q=Dublin&appid=', function (data) {
         // Set the icon
         const iconSRC = `<img src="https://openweathermap.org/img/w/${data.weather[0].icon}.png" style="width:50px;height:50px;">`;
 
@@ -86,7 +86,7 @@ function displayForecastTable(data) {
 
 function displayDetailedWeather(date) {
     // Fetch the weather data again and filter for the specific date
-    $.get('https://api.openweathermap.org/data/2.5/forecast?q=Dublin&appid=ae15fcd8aa527f306b31be332291daa1', function (data) {
+    $.get('https://api.openweathermap.org/data/2.5/forecast?q=Dublin&appid=', function (data) {
         const detailsHTML = `<h3>Detailed forecast for ${date}</h3><div id="detailed-weather"></div>`;
         $('#detailed-weather-pane').html(detailsHTML).show();
 
