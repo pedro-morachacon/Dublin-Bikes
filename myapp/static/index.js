@@ -493,7 +493,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateStationInformation(stationNumber) {
     // Fetch station data
-    $.get(`https://api.jcdecaux.com/vls/v1/stations/${stationNumber}?contract=dublin&apiKey=534bc23767749c9092ddc16b51fe73fc4758c7ce`, function (station) {
+    $.get(`https://api.jcdecaux.com/vls/v1/stations/${stationNumber}?contract=dublin&apiKey=`, function (station) {
       if (station) {
         $("#current-station").text(station.name);
         $("#station-status").text(station.status);
