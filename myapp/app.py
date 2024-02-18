@@ -18,7 +18,7 @@ def index():
     return render_template('index.html')
 
 from sqlalchemy import create_engine
-engine = create_engine('mysql+mysqlconnector://admin:qutmaS-gevbuv-nonhu3@dbike.cjpj1p90if76.us-east-1.rds.amazonaws.com:3306/dbikes') 
+engine = create_engine('mysql+mysqlconnector://admin:@dbike..us-east-1.rds.amazonaws.com:3306/dbikes') 
 
 @app.route('/stations')
 def get_stations():
