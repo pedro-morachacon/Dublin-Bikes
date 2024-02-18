@@ -16,11 +16,11 @@ import datetime
 from IPython.display import display
 
 #JCdeaux api
-APIKEY="534bc23767749c9092ddc16b51fe73fc4758c7ce "
+APIKEY=" "
 NAME="Dublin"
 STATIONS="https://api.jcdecaux.com/vls/v1/stations"
 #weather api
-api_key = 'ae15fcd8aa527f306b31be332291daa1'
+api_key = ''
 #current data
 url = f'http://api.openweathermap.org/data/2.5/weather?q=Dublin,ie&&appid={api_key}'
 #forecast data
@@ -30,7 +30,7 @@ if not os.path.exists("data"):
     os.makedirs("data")
 
 from sqlalchemy import create_engine
-engine = create_engine('mysql+mysqlconnector://admin:qutmaS-gevbuv-nonhu3@dbike.cjpj1p90if76.us-east-1.rds.amazonaws.com:3306/dbikes') 
+engine = create_engine('mysql+mysqlconnector://admin:@dbike..us-east-1.rds.amazonaws.com:3306/dbikes') 
 
 # Create the dbikes database if it does not exist
 sql = """
