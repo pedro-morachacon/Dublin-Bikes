@@ -1,6 +1,6 @@
 name: admin
 password: qutmaS-gevbuv-nonhu3
-host: dbike.cjpj1p90if76.us-east-1.rds.amazonaws.com
+host: dbike..us-east-1.rds.amazonaws.com
 database:dbikes
 
 
