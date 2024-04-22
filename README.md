@@ -1,3 +1,5 @@
+![DublinBikes App image](https://github.com/pedro-morachacon/Dublin-Bikes/blob/master/DublinBikes.jpg?raw=true)
+
 # Comp30830GroupProject
 COMP30830 Software Engineering Bike Rentals App Group Project
 
